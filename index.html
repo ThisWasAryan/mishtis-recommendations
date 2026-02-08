@@ -476,6 +476,7 @@
         // ========================================
         // MAP INITIALIZATION
         // ========================================
+        // The map starts centered near New Town / Salt Lake so all recommendations are visible.
         const map = L.map('map').setView([22.5726, 88.4639], 13);
         
         // NORMAL OPENSTREETMAP TILES (visible, not dark)
@@ -484,7 +485,8 @@
             maxZoom: 19
         }).addTo(map);
 
-        // Custom pins tracking
+        // Custom (red) pin state used only for measuring distance between two user-selected points.
+        // NOTE: Blue place markers are stored separately and are intentionally never modified by this flow.
         let customPins = [];
         let customMarkers = [];
         let distanceLine = null;
@@ -546,6 +548,10 @@
         // ========================================
         // SHOW PLACE DETAILS IN SIDEBAR
         // ========================================
+        /**
+         * Render the selected place details in the left sidebar and focus the map.
+         * @param {number} index - Array index of the place from `places`.
+         */
         function showPlaceDetails(index) {
             const place = places[index];
             const gmapsLink = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
@@ -579,10 +585,12 @@
             map.setView([place.lat, place.lng], 15);
         }
 
+        /** Open the details sidebar. */
         function openSidebar() {
             document.getElementById('sidebar').classList.add('open');
         }
 
+        /** Close the details sidebar. */
         function closeSidebar() {
             document.getElementById('sidebar').classList.remove('open');
         }
@@ -590,6 +598,9 @@
         // ========================================
         // DISTANCE CALCULATION (HAVERSINE)
         // ========================================
+        /**
+         * Compute great-circle distance (in km) between two geo points using the Haversine formula.
+         */
         function calculateDistance(lat1, lng1, lat2, lng2) {
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -601,6 +612,10 @@
             return R * c;
         }
 
+        /**
+         * Keep the distance panel in sync with the last two custom pins.
+         * If fewer than 2 custom pins exist, the panel is hidden.
+         */
         function updateDistanceDisplay() {
             const container = document.getElementById('distance-container');
             if (customPins.length >= 2) {
@@ -621,9 +636,57 @@
             }
         }
 
+        /**
+         * Keep only the latest two custom pins/markers.
+         *
+         * Why this exists:
+         * - Users can keep clicking on the map to measure multiple distances.
+         * - We only want to show a single active measurement at a time.
+         * - On the 3rd click (and onward), the oldest red pin must be removed
+         *   so only the latest two red pins remain visible.
+         */
+        function trimCustomPinsToLastTwo() {
+            while (customPins.length > 2) {
+                customPins.shift();
+            }
+
+            while (customMarkers.length > 2) {
+                const markerToRemove = customMarkers.shift();
+                map.removeLayer(markerToRemove);
+            }
+        }
+
+        /**
+         * Re-draw the dashed measurement line between the latest two custom pins.
+         */
+        function redrawDistanceLine() {
+            if (distanceLine) {
+                map.removeLayer(distanceLine);
+                distanceLine = null;
+            }
+
+            if (customPins.length < 2) {
+                return;
+            }
+
+            const last = customPins[customPins.length - 1];
+            const secondLast = customPins[customPins.length - 2];
+            distanceLine = L.polyline([
+                [secondLast.lat, secondLast.lng],
+                [last.lat, last.lng]
+            ], {
+                color: '#ef4444',
+                weight: 2,
+                opacity: 0.8,
+                dashArray: '8, 8'
+            }).addTo(map);
+        }
+
         // ========================================
         // CUSTOM PIN DROPPING
         // ========================================
+        // Clicking on the map drops a red pin for measurement only.
+        // The app always keeps exactly the latest two red pins.
         map.on('click', function(e) {
             const pin = {
                 lat: e.latlng.lat,
@@ -633,30 +696,22 @@
 
             const marker = L.marker([pin.lat, pin.lng], { icon: redIcon })
                 .addTo(map)
-                .bindPopup(`<div style="text-align:center"><b>Custom Pin ${customPins.length}</b></div>`);
+                .bindPopup(`<div style="text-align:center"><b>Measurement Pin</b></div>`);
             
             customMarkers.push(marker);
 
-            if (customPins.length >= 2) {
-                if (distanceLine) {
-                    map.removeLayer(distanceLine);
-                }
-                const last = customPins[customPins.length - 1];
-                const secondLast = customPins[customPins.length - 2];
-                distanceLine = L.polyline([
-                    [secondLast.lat, secondLast.lng],
-                    [last.lat, last.lng]
-                ], {
-                    color: '#ef4444',
-                    weight: 2,
-                    opacity: 0.8,
-                    dashArray: '8, 8'
-                }).addTo(map);
-            }
+            // Core bug fix: once users drop a third pin, remove the oldest one,
+            // so the active measurement always snaps to the latest two pins.
+            trimCustomPinsToLastTwo();
+            redrawDistanceLine();
 
             updateDistanceDisplay();
         });
 
+        /**
+         * Remove all custom measurement pins/lines and reset the distance panel.
+         * This never touches blue destination markers.
+         */
         function clearPins() {
             customPins = [];
             customMarkers.forEach(marker => map.removeLayer(marker));
