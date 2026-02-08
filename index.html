@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,714 +7,453 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            color-scheme: dark;
+            --bg: #0b1020;
+            --glass: rgba(20, 27, 47, 0.42);
+            --glass-strong: rgba(16, 22, 40, 0.56);
+            --surface: rgba(28, 37, 62, 0.42);
+            --border: rgba(180, 199, 240, 0.24);
+            --border-soft: rgba(180, 199, 240, 0.14);
+            --text: #f4f8ff;
+            --text-soft: #b2bfdc;
+            --accent: #5ba2ff;
+            --accent-strong: #3f84ff;
+            --success: #1ec68e;
+            --danger: #ff687f;
+            --shadow: 0 20px 45px rgba(7, 9, 18, 0.45);
+            --radius: 14px;
+            --blur: 18px;
         }
+
+        [data-theme="light"] {
+            color-scheme: light;
+            --bg: #e7eefc;
+            --glass: rgba(255, 255, 255, 0.34);
+            --glass-strong: rgba(255, 255, 255, 0.47);
+            --surface: rgba(255, 255, 255, 0.38);
+            --border: rgba(84, 106, 145, 0.22);
+            --border-soft: rgba(84, 106, 145, 0.15);
+            --text: #17213a;
+            --text-soft: #4d618f;
+            --accent: #2563eb;
+            --accent-strong: #1e4fd0;
+            --success: #0f9f71;
+            --danger: #e23b5d;
+            --shadow: 0 16px 35px rgba(30, 46, 86, 0.14);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            height: 100vh;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: radial-gradient(circle at 12% 8%, rgba(91, 162, 255, 0.16), transparent 35%), var(--bg);
+            color: var(--text);
+            transition: background 260ms ease, color 260ms ease;
+        }
+
+        .app-shell { position: relative; width: 100%; height: 100%; }
+
+        .glass-panel {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(var(--blur)) saturate(1.25) contrast(1.06);
+            -webkit-backdrop-filter: blur(var(--blur)) saturate(1.25) contrast(1.06);
+            position: relative;
             overflow: hidden;
-            background: #1a1a1a;
-            color: #e0e0e0;
+            isolation: isolate;
         }
-        .header {
+
+        .glass-panel::before {
+            content: "";
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: #1e1e1e;
-            padding: 24px 32px;
+            inset: 0;
+            background: linear-gradient(130deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.03) 36%, rgba(255, 255, 255, 0.16) 100%);
+            opacity: 0.45;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        [data-theme="light"] .glass-panel::before {
+            opacity: 0.62;
+            background: linear-gradient(130deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.16) 40%, rgba(255, 255, 255, 0.35) 100%);
+        }
+
+        .top-island {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 1000;
-            border-bottom: 1px solid #2a2a2a;
-        }
-        .header h1 {
-            font-size: 24px;
-            font-weight: 600;
-            color: #ffffff;
-            letter-spacing: -0.5px;
-        }
-        #map {
-            position: absolute;
-            top: 73px;
-            left: 0;
-            right: 0;
-            bottom: 0;
-        }
-        .controls {
-            position: absolute;
-            top: 93px;
-            right: 20px;
-            z-index: 999;
-        }
-        .btn {
-            padding: 12px 14px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 20px;
-            transition: all 0.2s ease;
-            background: #252525;
-            color: #e0e0e0;
-            border: 1px solid #3a3a3a;
-        }
-        .btn:hover {
-            background: #2e2e2e;
-            border-color: #4a4a4a;
-        }
-        .sidebar {
-            position: absolute;
-            top: 73px;
-            left: -450px;
-            width: 450px;
-            bottom: 0;
-            background: #1e1e1e;
-            z-index: 998;
-            overflow-y: auto;
-            transition: left 0.3s ease;
-            border-right: 1px solid #2a2a2a;
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-        }
-        .sidebar::-webkit-scrollbar {
-            display: none;
-        }
-        .sidebar.open {
-            left: 0;
-        }
-        .sidebar-content {
-            padding: 32px;
-        }
-        .sidebar-header {
-            position: sticky;
-            top: 0;
-            background: #1e1e1e;
-            padding: 20px 20px 16px 20px;
-            z-index: 10;
-            border-bottom: 1px solid #2a2a2a;
-        }
-        .close-btn {
-            background: #252525;
-            border: 1px solid #3a3a3a;
-            color: #e0e0e0;
-            width: 36px;
-            height: 36px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 20px;
-            transition: all 0.2s ease;
+            width: min(860px, calc(100% - 26px));
+            border-radius: calc(var(--radius) + 4px);
+            padding: 10px 12px;
             display: flex;
             align-items: center;
-            justify-content: center;
-            float: right;
+            justify-content: space-between;
+            gap: 10px;
+            animation: slideDown 350ms ease;
         }
-        .close-btn:hover {
-            background: #2e2e2e;
-            border-color: #4a4a4a;
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            min-width: 190px;
         }
-        .place-title {
-            font-size: 26px;
-            font-weight: 600;
-            margin-bottom: 24px;
-            color: #ffffff;
-            letter-spacing: -0.5px;
-            clear: both;
+
+        .brand h1 {
+            font-size: clamp(0.98rem, 2vw, 1.15rem);
+            font-weight: 700;
+            line-height: 1.1;
         }
-        .user-review {
-            background: #252525;
-            padding: 20px;
-            border-radius: 8px;
-            border-left: 3px solid #3b82f6;
-            margin-bottom: 28px;
-            font-style: italic;
-            line-height: 1.7;
-            color: #b0b0b0;
+
+        .brand p {
+            font-size: 0.72rem;
+            color: var(--text-soft);
+            margin-top: 2px;
         }
-        .pros-cons-container {
-            margin-top: 28px;
-        }
-        .section {
-            margin-bottom: 24px;
-        }
-        .section h3 {
-            font-size: 16px;
-            margin-bottom: 14px;
+
+        .action-row {
             display: flex;
             align-items: center;
             gap: 8px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-size: 13px;
         }
-        .pros h3 {
-            color: #10b981;
+
+        .icon-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--border-soft);
+            background: var(--surface);
+            color: var(--text);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
         }
-        .cons h3 {
-            color: #ef4444;
+
+        .icon-btn:hover {
+            transform: translateY(-1px);
+            border-color: var(--accent);
+            background: var(--glass-strong);
         }
-        .section ul {
-            list-style: none;
-            padding: 0;
+
+        #map {
+            position: absolute;
+            inset: 0;
+            filter: saturate(1.07) contrast(1.02);
         }
+
+        .sidebar {
+            position: absolute;
+            top: 76px;
+            left: 14px;
+            width: min(420px, calc(100% - 28px));
+            bottom: 14px;
+            border-radius: calc(var(--radius) + 2px);
+            z-index: 998;
+            transform: translateX(calc(-100% - 26px));
+            transition: transform 280ms ease;
+        }
+
+        .sidebar.open { transform: translateX(0); }
+        .sidebar-header { display: flex; justify-content: flex-end; padding: 12px 12px 0; }
+        .close-btn {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            border: 1px solid var(--border-soft);
+            background: var(--surface);
+            color: var(--text);
+            font-size: 1.15rem;
+            cursor: pointer;
+        }
+        .sidebar-content { padding: 8px 22px 22px; overflow-y: auto; max-height: calc(100% - 44px); }
+
+        .place-title { font-size: clamp(1.15rem, 2.6vw, 1.5rem); margin-bottom: 14px; }
+        .user-review {
+            background: var(--surface);
+            border: 1px solid var(--border-soft);
+            border-radius: var(--radius);
+            padding: 14px;
+            line-height: 1.55;
+            color: var(--text-soft);
+            margin-bottom: 16px;
+            font-style: italic;
+        }
+
+        .section { margin-bottom: 16px; }
+        .section h3 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+        .pros h3 { color: var(--success); }
+        .cons h3 { color: var(--danger); }
+        .section ul { list-style: none; display: grid; gap: 7px; }
         .section li {
-            padding: 11px 0;
-            padding-left: 26px;
+            padding: 9px 10px 9px 28px;
+            background: var(--surface);
+            border: 1px solid var(--border-soft);
+            border-radius: 10px;
+            color: var(--text-soft);
             position: relative;
-            line-height: 1.6;
-            color: #b0b0b0;
-            border-bottom: 1px solid #252525;
+            line-height: 1.45;
         }
-        .section li:last-child {
-            border-bottom: none;
-        }
-        .pros li:before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: #10b981;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        .cons li:before {
-            content: "✗";
-            position: absolute;
-            left: 0;
-            color: #ef4444;
-            font-weight: bold;
-            font-size: 16px;
-        }
+        .pros li::before, .cons li::before { position: absolute; left: 10px; top: 8px; font-weight: 700; }
+        .pros li::before { content: "✓"; color: var(--success); }
+        .cons li::before { content: "✕"; color: var(--danger); }
+
         .gmaps-link {
             display: inline-block;
-            margin-top: 24px;
-            padding: 12px 24px;
-            background: #3b82f6;
-            color: #ffffff;
+            margin-top: 8px;
+            padding: 9px 15px;
+            border-radius: 10px;
+            background: var(--accent);
+            color: #fff;
             text-decoration: none;
-            border-radius: 6px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            font-size: 14px;
+            font-size: 0.86rem;
+            font-weight: 600;
         }
-        .gmaps-link:hover {
-            background: #2563eb;
-        }
+        .gmaps-link:hover { background: var(--accent-strong); }
+
         .distance-display {
             position: absolute;
-            bottom: 24px;
+            bottom: 16px;
             left: 50%;
             transform: translateX(-50%);
-            background: #1e1e1e;
-            padding: 20px 40px;
-            border-radius: 8px;
             z-index: 999;
-            border: 1px solid #3a3a3a;
+            min-width: 175px;
             text-align: center;
+            padding: 10px 16px;
+            border-radius: calc(var(--radius) + 2px);
+            border: 1px solid var(--border);
+            background: var(--glass);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(var(--blur)) saturate(1.2);
+            -webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
+            animation: fadeUp 250ms ease;
         }
         .distance-display h3 {
-            font-size: 12px;
-            margin-bottom: 8px;
-            color: #808080;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            font-weight: 500;
+            font-size: 0.63rem;
+            letter-spacing: 0.12em;
+            color: var(--text-soft);
+            margin-bottom: 4px;
         }
-        .distance-value {
-            font-size: 28px;
-            color: #3b82f6;
-            font-weight: 600;
-        }
-        .leaflet-popup-content-wrapper {
-            background: #1e1e1e;
-            color: #e0e0e0;
-            border-radius: 8px;
-            padding: 4px;
-            border: 1px solid #3a3a3a;
-        }
-        .leaflet-popup-content {
-            margin: 14px;
-            font-size: 14px;
-        }
+        .distance-value { font-size: 1.35rem; font-weight: 700; color: var(--accent); }
+
+        .leaflet-popup-content-wrapper,
         .leaflet-popup-tip {
-            background: #1e1e1e;
-            border: 1px solid #3a3a3a;
+            background: var(--glass-strong);
+            border: 1px solid var(--border);
+            color: var(--text);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
         }
-        .popup-title {
-            font-weight: 600;
-            font-size: 15px;
-            margin-bottom: 10px;
-            color: #ffffff;
-        }
+        .popup-title { font-weight: 700; margin-bottom: 8px; }
         .popup-btn {
-            display: inline-block;
-            margin-top: 8px;
-            padding: 8px 16px;
-            background: #3b82f6;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
             border: none;
-            transition: all 0.2s ease;
+            border-radius: 8px;
+            background: var(--accent);
+            color: #fff;
+            padding: 8px 14px;
+            font-weight: 600;
+            cursor: pointer;
         }
-        .popup-btn:hover {
-            background: #2563eb;
+
+        @media (max-width: 930px) {
+            .top-island { width: calc(100% - 20px); top: 10px; left: 10px; transform: none; }
+            .brand p { display: none; }
+            .sidebar { top: 72px; left: 10px; bottom: 10px; width: calc(100% - 20px); }
         }
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 20px;
-            }
-            .sidebar {
-                width: 100%;
-                left: -100%;
-            }
-            .controls {
-                top: 90px;
-                right: 10px;
-            }
-            .btn {
-                padding: 10px 12px;
-                font-size: 18px;
-            }
+
+        @media (max-width: 700px) {
+            .top-island { justify-content: space-between; }
+            .brand { min-width: 0; }
+            .sidebar { top: 70px; }
         }
+
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+        @keyframes slideDown { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        @media (max-width: 930px) { @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } } }
+        @keyframes fadeUp { from { opacity: 0; transform: translate(-50%, 7px); } to { opacity: 1; transform: translate(-50%, 0); } }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Mishti's Recommendations</h1>
+    <div class="app-shell">
+        <header class="top-island glass-panel">
+            <div class="brand">
+                <h1>Mishti's Recommendations</h1>
+                <p>Curated spots around New Town & Salt Lake</p>
+            </div>
+
+            <div class="action-row">
+                <button class="icon-btn" id="theme-toggle" type="button" title="Toggle dark or light mode" aria-label="Toggle dark or light mode">🌙</button>
+                <button class="icon-btn" onclick="clearPins()" title="Clear measurement pins" aria-label="Clear measurement pins">🗑️</button>
+            </div>
+        </header>
+
+        <div id="map"></div>
+
+        <aside class="sidebar glass-panel" id="sidebar" aria-live="polite">
+            <div class="sidebar-header">
+                <button class="close-btn" onclick="closeSidebar()" aria-label="Close details panel">×</button>
+            </div>
+            <div class="sidebar-content" id="sidebar-content"></div>
+        </aside>
+
+        <div id="distance-container"></div>
     </div>
-
-    <div id="map"></div>
-
-    <div class="controls">
-        <button class="btn" onclick="clearPins()" title="Clear Pins">🗑️</button>
-    </div>
-
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <button class="close-btn" onclick="closeSidebar()">×</button>
-        </div>
-        <div class="sidebar-content" id="sidebar-content"></div>
-    </div>
-
-    <div id="distance-container"></div>
 
     <script>
-        // ========================================
-        // PLACE DATA - EASY TO EDIT
-        // ========================================
-        // VERIFIED COORDINATES (searched and confirmed online)
-        // To add a new place: Copy a place object below, modify values, add comma after previous entry
-        // To find coordinates: Right-click on Google Maps → Click the coordinates that appear
-        
         const places = [
-            {
-                name: "Central Park Salt Lake",
-                lat: 22.583938,      // VERIFIED: Central Park, Sector III, Salt Lake
-                lng: 88.416204,
-                userReview: "Ok so if he wants good environment in salt lake Its central park it has good views with peace",
-                pros: [
-                    "Beautiful green spaces and walking paths",
-                    "Peaceful environment with good views",
-                    "Well-maintained park facilities",
-                    "Great for morning walks and evening strolls"
-                ],
-                cons: [
-                    "Can get crowded on weekends",
-                    "Limited parking space",
-                    "Entry fee required"
-                ]
-            },
-            {
-                name: "Eco Park New Town",
-                lat: 22.600488,      // VERIFIED: Eco Park, Major Arterial Road, New Town
-                lng: 88.470768,
-                userReview: "And in newtown it would be eco park it has the 7 wonders peaceful sitting areas and photogenic places like a flower garden",
-                pros: [
-                    "Features replicas of 7 wonders of the world",
-                    "Beautiful flower gardens and photogenic spots",
-                    "Peaceful sitting areas throughout",
-                    "Large area with diverse attractions",
-                    "Boating facilities available"
-                ],
-                cons: [
-                    "Very crowded on holidays",
-                    "Food options are limited inside"
-                ]
-            },
-            {
-                name: "Axis Mall (with Chinese Café)",
-                lat: 22.5796041,     // VERIFIED: Axis Mall, Action Area 1C, New Town
-                lng: 88.4599513,
-                userReview: "Thora posh mein jaana hai he can explore axis and city centre malls it has many good outlets to eat. There is this very good small cafe in axis mall it is chinese and the food is very good",
-                pros: [
-                    "Excellent Chinese café with great food",
-                    "Wide variety of dining and shopping options",
-                    "Modern mall with good ambiance",
-                    "Ample parking space",
-                    "Air-conditioned comfort"
-                ],
-                cons: [
-                    "Can be expensive",
-                    "Crowded during weekends",
-                    "Small Chinese café can have waiting time"
-                ]
-            },
-            {
-                name: "City Centre 2",
-                lat: 22.622954,        // APPROXIMATE: City Centre Mall, New Town
-                lng: 88.449917,
-                userReview: "Thora posh mein jaana hai he can explore axis and city centre malls it has many good outlets to eat",
-                pros: [
-                    "Premium shopping destination",
-                    "Excellent food court and restaurants",
-                    "Multiplex cinema",
-                    "Well-maintained facilities",
-                    "Good brands and outlets"
-                ],
-                cons: [
-                    "Premium pricing",
-                    "Heavy traffic during peak hours",
-                    "Parking can be challenging on weekends"
-                ]
-            },
-            {
-                name: "Kosha Koshe Chinar Park",
-                lat: 22.625047,        // APPROXIMATE: Chinar Park area
-                lng: 88.438756,
-                userReview: "Bengali cuisine khaana hai he can go to kosha koshe in chinaar park",
-                pros: [
-                    "Authentic Bengali cuisine",
-                    "Good quality traditional food",
-                    "Reasonable pricing",
-                    "Popular local restaurant"
-                ],
-                cons: [
-                    "Can be crowded during lunch/dinner",
-                    "Limited seating capacity",
-                    "Waiting time during peak hours"
-                ]
-            },
-            {
-                name: "Nalban Boating Complex",
-                lat: 22.568554,        // APPROXIMATE: Nalban area, Salt Lake
-                lng: 88.430920,
-                userReview: "There is one nalban boating complex like a restaurant with a lake view its very peaceful",
-                pros: [
-                    "Beautiful lake views",
-                    "Very peaceful environment",
-                    "Boating facilities available",
-                    "Restaurant with scenic setting",
-                    "Good for relaxation"
-                ],
-                cons: [
-                    "Limited food menu",
-                    "Boating charges apply",
-                    "Can be hot during summer afternoons"
-                ]
-            },
-            {
-                name: "The Green House Café (Behind Hidco Bhawan)",
-                lat: 22.580097,        // APPROXIMATE: Near Hidco Bhawan area
-                lng: 88.473352,
-                userReview: "If cafes with privacy he can ho to the green house it is behind hidco bhawan it is ver peaceful and quite",
-                pros: [
-                    "Very peaceful and quiet atmosphere",
-                    "Good privacy for conversations",
-                    "Nice ambiance with greenery",
-                    "Quality café offerings"
-                ],
-                cons: [
-                    "Slightly hidden location",
-                    "Limited seating capacity",
-                    "Can be pricey for a café"
-                ]
-            },
-            {
-                name: "Prinsep Ghat Park",
-                lat: 22.558902,        // APPROXIMATE: Old Kolkata area
-                lng: 88.332888,
-                userReview: "I would have suggested princep ghat and victoria but that is in old Kolkata",
-                pros: [
-                    "Riverside location",
-                    "Great for photography",
-                    "Great for couples"
-                ],
-                cons: [
-                    "Located in Old Kolkata",
-                    "Heavy traffic getting there",
-                    "Hostility"
-                ]
-            },
-            {
-                name: "Mishti's College (St. Xavier's University)",
-                lat: 22.56074,       // VERIFIED: St. Xavier's University, Action Area III
-                lng: 88.48801,
-                userReview: "This is where Mishti studies! St. Xavier's University in Action Area III, New Town.",
-                pros: [
-                    "PROS JAAN KAR KYA KROGE"
-                ],
-                cons: [
-                    "CONS?",
-                ]
-            }
+            { name: "Central Park Salt Lake", lat: 22.583938, lng: 88.416204, userReview: "Ok so if he wants good environment in salt lake Its central park it has good views with peace", pros: ["Beautiful green spaces and walking paths", "Peaceful environment with good views", "Well-maintained park facilities", "Great for morning walks and evening strolls"], cons: ["Can get crowded on weekends", "Limited parking space", "Entry fee required"] },
+            { name: "Eco Park New Town", lat: 22.600488, lng: 88.470768, userReview: "And in newtown it would be eco park it has the 7 wonders peaceful sitting areas and photogenic places like a flower garden", pros: ["Features replicas of 7 wonders of the world", "Beautiful flower gardens and photogenic spots", "Peaceful sitting areas throughout", "Large area with diverse attractions", "Boating facilities available"], cons: ["Very crowded on holidays", "Food options are limited inside"] },
+            { name: "Axis Mall (with Chinese Café)", lat: 22.5796041, lng: 88.4599513, userReview: "Thora posh mein jaana hai he can explore axis and city centre malls it has many good outlets to eat. There is this very good small cafe in axis mall it is chinese and the food is very good", pros: ["Excellent Chinese café with great food", "Wide variety of dining and shopping options", "Modern mall with good ambiance", "Ample parking space", "Air-conditioned comfort"], cons: ["Can be expensive", "Crowded during weekends", "Small Chinese café can have waiting time"] },
+            { name: "City Centre 2", lat: 22.622954, lng: 88.449917, userReview: "Thora posh mein jaana hai he can explore axis and city centre malls it has many good outlets to eat", pros: ["Premium shopping destination", "Excellent food court and restaurants", "Multiplex cinema", "Well-maintained facilities", "Good brands and outlets"], cons: ["Premium pricing", "Heavy traffic during peak hours", "Parking can be challenging on weekends"] },
+            { name: "Kosha Koshe Chinar Park", lat: 22.625047, lng: 88.438756, userReview: "Bengali cuisine khaana hai he can go to kosha koshe in chinaar park", pros: ["Authentic Bengali cuisine", "Good quality traditional food", "Reasonable pricing", "Popular local restaurant"], cons: ["Can be crowded during lunch/dinner", "Limited seating capacity", "Waiting time during peak hours"] },
+            { name: "Nalban Boating Complex", lat: 22.568554, lng: 88.430920, userReview: "There is one nalban boating complex like a restaurant with a lake view its very peaceful", pros: ["Beautiful lake views", "Very peaceful environment", "Boating facilities available", "Restaurant with scenic setting", "Good for relaxation"], cons: ["Limited food menu", "Boating charges apply", "Can be hot during summer afternoons"] },
+            { name: "The Green House Café (Behind Hidco Bhawan)", lat: 22.580097, lng: 88.473352, userReview: "If cafes with privacy he can ho to the green house it is behind hidco bhawan it is ver peaceful and quite", pros: ["Very peaceful and quiet atmosphere", "Good privacy for conversations", "Nice ambiance with greenery", "Quality café offerings"], cons: ["Slightly hidden location", "Limited seating capacity", "Can be pricey for a café"] },
+            { name: "Prinsep Ghat Park", lat: 22.558902, lng: 88.332888, userReview: "I would have suggested princep ghat and victoria but that is in old Kolkata", pros: ["Riverside location", "Great for photography", "Great for couples"], cons: ["Located in Old Kolkata", "Heavy traffic getting there", "Hostility"] },
+            { name: "Mishti's College (St. Xavier's University)", lat: 22.56074, lng: 88.48801, userReview: "This is where Mishti studies! St. Xavier's University in Action Area III, New Town.", pros: ["PROS JAAN KAR KYA KROGE"], cons: ["CONS?"] }
         ];
 
-        // ========================================
-        // HOW TO CHANGE COLORS
-        // ========================================
-        // Search for these hex codes and replace:
-        // #3b82f6 = Blue accent color (buttons, links, distance)
-        // #1e1e1e = Dark background
-        // #252525 = Slightly lighter dark
-        // #10b981 = Green (for pros)
-        // #ef4444 = Red (for cons)
-
-        // ========================================
-        // MAP INITIALIZATION
-        // ========================================
-        // The map starts centered near New Town / Salt Lake so all recommendations are visible.
         const map = L.map('map').setView([22.5726, 88.4639], 13);
-        
-        // NORMAL OPENSTREETMAP TILES (visible, not dark)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-            maxZoom: 19
-        }).addTo(map);
+        const lightTileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 });
+        const darkTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap contributors © CARTO', maxZoom: 19 });
 
-        // Custom (red) pin state used only for measuring distance between two user-selected points.
-        // NOTE: Blue place markers are stored separately and are intentionally never modified by this flow.
+        let activeTileLayer = null;
         let customPins = [];
         let customMarkers = [];
         let distanceLine = null;
-        let placeMarkers = [];
+        const placeMarkers = [];
 
-        // Blue marker icon for places
-        const blueIcon = L.divIcon({
-            className: 'custom-div-icon',
-            html: `<div style="
-                background-color: #3b82f6;
-                width: 28px;
-                height: 28px;
-                border-radius: 50% 50% 50% 0;
-                transform: rotate(-45deg);
-                border: 2px solid #1e1e1e;
-                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
-            "></div>`,
-            iconSize: [28, 28],
-            iconAnchor: [14, 28],
-            popupAnchor: [0, -28]
+        const themeToggle = document.getElementById('theme-toggle');
+        const savedTheme = localStorage.getItem('mishti-theme');
+        const preferredTheme = savedTheme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('mishti-theme', theme);
+            themeToggle.textContent = theme === 'dark' ? '🌙' : '☀️';
+
+            if (activeTileLayer) map.removeLayer(activeTileLayer);
+            activeTileLayer = theme === 'dark' ? darkTileLayer : lightTileLayer;
+            activeTileLayer.addTo(map);
+
+            redrawDistanceLine();
+            updateDistanceDisplay();
+            refreshMarkerStyles(theme);
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
         });
 
-        // Red marker icon for custom pins
-        const redIcon = L.divIcon({
-            className: 'custom-div-icon',
-            html: `<div style="
-                background-color: #ef4444;
-                width: 24px;
-                height: 24px;
-                border-radius: 50% 50% 50% 0;
-                transform: rotate(-45deg);
-                border: 2px solid #1e1e1e;
-                box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
-            "></div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 24],
-            popupAnchor: [0, -24]
-        });
+        function pinHtml(color, borderColor, size, shadow) {
+            return `<div style="
+                background:${color}; width:${size}px; height:${size}px;
+                border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+                border:2px solid ${borderColor}; box-shadow:${shadow};
+            "></div>`;
+        }
 
-        // ========================================
-        // ADD PLACE MARKERS
-        // ========================================
+        function getBlueIcon(theme) {
+            const border = theme === 'dark' ? '#0b1020' : '#ffffff';
+            return L.divIcon({ className: 'custom-div-icon', html: pinHtml('#3f84ff', border, 28, '0 6px 14px rgba(37, 99, 235, 0.45)'), iconSize: [28, 28], iconAnchor: [14, 28], popupAnchor: [0, -28] });
+        }
+
+        function getRedIcon(theme) {
+            const border = theme === 'dark' ? '#0b1020' : '#ffffff';
+            return L.divIcon({ className: 'custom-div-icon', html: pinHtml('#ef4444', border, 24, '0 6px 14px rgba(239, 68, 68, 0.4)'), iconSize: [24, 24], iconAnchor: [12, 24], popupAnchor: [0, -24] });
+        }
+
+        function refreshMarkerStyles(theme) {
+            const blueIcon = getBlueIcon(theme);
+            const redIcon = getRedIcon(theme);
+            placeMarkers.forEach((marker) => marker.setIcon(blueIcon));
+            customMarkers.forEach((marker) => marker.setIcon(redIcon));
+        }
+
         places.forEach((place, index) => {
-            const marker = L.marker([place.lat, place.lng], { icon: blueIcon })
+            const marker = L.marker([place.lat, place.lng], { icon: getBlueIcon(preferredTheme) })
                 .addTo(map)
-                .bindPopup(`
-                    <div class="popup-title">${place.name}</div>
-                    <button class="popup-btn" onclick="showPlaceDetails(${index})">View Details</button>
-                `);
-            
-            marker.placeIndex = index;
-            marker.on('click', function() {
-                showPlaceDetails(index);
-            });
-            
+                .bindPopup(`<div class="popup-title">${place.name}</div><button class="popup-btn" onclick="showPlaceDetails(${index})">View Details</button>`);
+
+            marker.on('click', () => showPlaceDetails(index));
             placeMarkers.push(marker);
         });
 
-        // ========================================
-        // SHOW PLACE DETAILS IN SIDEBAR
-        // ========================================
-        /**
-         * Render the selected place details in the left sidebar and focus the map.
-         * @param {number} index - Array index of the place from `places`.
-         */
         function showPlaceDetails(index) {
             const place = places[index];
             const gmapsLink = `https://www.google.com/maps/search/?api=1&query=${place.lat},${place.lng}`;
-            
             document.getElementById('sidebar-content').innerHTML = `
                 <h2 class="place-title">${place.name}</h2>
                 <div class="user-review">${place.userReview}</div>
-                
-                <div class="pros-cons-container">
-                    <div class="section pros">
-                        <h3>Pros</h3>
-                        <ul>
-                            ${place.pros.map(pro => `<li>${pro}</li>`).join('')}
-                        </ul>
-                    </div>
-                    
-                    <div class="section cons">
-                        <h3>Cons</h3>
-                        <ul>
-                            ${place.cons.map(con => `<li>${con}</li>`).join('')}
-                        </ul>
-                    </div>
-                </div>
-                
-                <a href="${gmapsLink}" target="_blank" class="gmaps-link">
-                    Open in Google Maps
-                </a>
+                <div class="section pros"><h3>Pros</h3><ul>${place.pros.map((pro) => `<li>${pro}</li>`).join('')}</ul></div>
+                <div class="section cons"><h3>Cons</h3><ul>${place.cons.map((con) => `<li>${con}</li>`).join('')}</ul></div>
+                <a href="${gmapsLink}" target="_blank" class="gmaps-link" rel="noopener noreferrer">Open in Google Maps</a>
             `;
-            
             openSidebar();
-            map.setView([place.lat, place.lng], 15);
+            map.flyTo([place.lat, place.lng], 15, { duration: 0.62 });
         }
 
-        /** Open the details sidebar. */
-        function openSidebar() {
-            document.getElementById('sidebar').classList.add('open');
-        }
+        function openSidebar() { document.getElementById('sidebar').classList.add('open'); }
+        function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); }
 
-        /** Close the details sidebar. */
-        function closeSidebar() {
-            document.getElementById('sidebar').classList.remove('open');
-        }
-
-        // ========================================
-        // DISTANCE CALCULATION (HAVERSINE)
-        // ========================================
-        /**
-         * Compute great-circle distance (in km) between two geo points using the Haversine formula.
-         */
         function calculateDistance(lat1, lng1, lat2, lng2) {
             const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLng = (lng2 - lng1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                     Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                     Math.sin(dLng/2) * Math.sin(dLng/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
         }
 
-        /**
-         * Keep the distance panel in sync with the last two custom pins.
-         * If fewer than 2 custom pins exist, the panel is hidden.
-         */
         function updateDistanceDisplay() {
             const container = document.getElementById('distance-container');
-            if (customPins.length >= 2) {
-                const last = customPins[customPins.length - 1];
-                const secondLast = customPins[customPins.length - 2];
-                const distance = calculateDistance(
-                    secondLast.lat, secondLast.lng,
-                    last.lat, last.lng
-                );
-                container.innerHTML = `
-                    <div class="distance-display">
-                        <h3>Distance</h3>
-                        <div class="distance-value">${distance.toFixed(2)} km</div>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = '';
-            }
+            if (customPins.length < 2) return (container.innerHTML = '');
+            const last = customPins[customPins.length - 1];
+            const secondLast = customPins[customPins.length - 2];
+            const distance = calculateDistance(secondLast.lat, secondLast.lng, last.lat, last.lng);
+            container.innerHTML = `<div class="distance-display"><h3>Distance</h3><div class="distance-value">${distance.toFixed(2)} km</div></div>`;
         }
 
-        /**
-         * Keep only the latest two custom pins/markers.
-         *
-         * Why this exists:
-         * - Users can keep clicking on the map to measure multiple distances.
-         * - We only want to show a single active measurement at a time.
-         * - On the 3rd click (and onward), the oldest red pin must be removed
-         *   so only the latest two red pins remain visible.
-         */
         function trimCustomPinsToLastTwo() {
-            while (customPins.length > 2) {
-                customPins.shift();
-            }
-
-            while (customMarkers.length > 2) {
-                const markerToRemove = customMarkers.shift();
-                map.removeLayer(markerToRemove);
-            }
+            while (customPins.length > 2) customPins.shift();
+            while (customMarkers.length > 2) map.removeLayer(customMarkers.shift());
         }
 
-        /**
-         * Re-draw the dashed measurement line between the latest two custom pins.
-         */
         function redrawDistanceLine() {
             if (distanceLine) {
                 map.removeLayer(distanceLine);
                 distanceLine = null;
             }
+            if (customPins.length < 2) return;
 
-            if (customPins.length < 2) {
-                return;
-            }
-
+            const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const lineColor = theme === 'dark' ? '#ff688a' : '#e23b5d';
             const last = customPins[customPins.length - 1];
             const secondLast = customPins[customPins.length - 2];
-            distanceLine = L.polyline([
-                [secondLast.lat, secondLast.lng],
-                [last.lat, last.lng]
-            ], {
-                color: '#ef4444',
-                weight: 2,
-                opacity: 0.8,
-                dashArray: '8, 8'
-            }).addTo(map);
+
+            distanceLine = L.polyline([[secondLast.lat, secondLast.lng], [last.lat, last.lng]], { color: lineColor, weight: 2.4, opacity: 0.92, dashArray: '7 7' }).addTo(map);
         }
 
-        // ========================================
-        // CUSTOM PIN DROPPING
-        // ========================================
-        // Clicking on the map drops a red pin for measurement only.
-        // The app always keeps exactly the latest two red pins.
-        map.on('click', function(e) {
-            const pin = {
-                lat: e.latlng.lat,
-                lng: e.latlng.lng
-            };
+        map.on('click', (e) => {
+            const pin = { lat: e.latlng.lat, lng: e.latlng.lng };
             customPins.push(pin);
-
-            const marker = L.marker([pin.lat, pin.lng], { icon: redIcon })
-                .addTo(map)
-                .bindPopup(`<div style="text-align:center"><b>Measurement Pin</b></div>`);
-            
+            const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+            const marker = L.marker([pin.lat, pin.lng], { icon: getRedIcon(theme) }).addTo(map).bindPopup('<div style="text-align:center"><b>Measurement Pin</b></div>');
             customMarkers.push(marker);
-
-            // Core bug fix: once users drop a third pin, remove the oldest one,
-            // so the active measurement always snaps to the latest two pins.
             trimCustomPinsToLastTwo();
             redrawDistanceLine();
-
             updateDistanceDisplay();
         });
 
-        /**
-         * Remove all custom measurement pins/lines and reset the distance panel.
-         * This never touches blue destination markers.
-         */
         function clearPins() {
             customPins = [];
-            customMarkers.forEach(marker => map.removeLayer(marker));
+            customMarkers.forEach((marker) => map.removeLayer(marker));
             customMarkers = [];
             if (distanceLine) {
                 map.removeLayer(distanceLine);
@@ -722,6 +461,8 @@
             }
             updateDistanceDisplay();
         }
+
+        applyTheme(preferredTheme);
     </script>
 </body>
 </html>
